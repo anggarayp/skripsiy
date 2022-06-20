@@ -3,7 +3,7 @@ from turtle import distance
 import olympe
 from droneState import DroneState
 from olympe.messages.ardrone3.PilotingSettings import MaxTilt
-from olympe.messages.ardrone3.Piloting import TakeOff, moveBy, Landing
+from olympe.messages.ardrone3.Piloting import TakeOff, moveBy, Landing, moveTo
 from olympe.messages.ardrone3.PilotingState import FlyingStateChanged
 from olympe.messages.ardrone3.GPSSettingsState import HomeChanged
 from olympe.messages.ardrone3.PilotingState import PositionChanged
@@ -80,6 +80,16 @@ class Drone():
 
     def disconnectFromDrone(self):
         self.drone.disconnect()
+
+    #Buat RTH (Return to Home)
+    def move_to_gps(drone, latitude, longitude, altitude, heading, timeout=60):
+        assert drone(moveTo(latitude=latitude,
+                                longitude=longitude,
+                                altitude=altitude,
+                                orientation_mode=MoveTo_Orientation_mode.HEADING_DURING,
+                                heading=heading)
+                        >> moveToChanged(status='DONE', _timeout=timeout)
+                        >> FlyingStateChanged(state="hovering", _timeout=10)).wait().success()
 
     def vincenty_formula(self, latitude1, longitude1, latitude2, longitude2):
         #fungsi menghitung jarak drone dengan titik tujuan

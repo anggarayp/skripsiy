@@ -1,12 +1,12 @@
 from droneState import DroneState
-import sys
+# import sys
 import time
 #Import all neccessary features to code.
 import RPi.GPIO as GPIO
 from time import sleep
 from compass import Compass
 from drone import Drone
-from olympe.messages.ardrone3.Piloting import moveTo
+from olympe.messages.ardrone3.Piloting import Landing, moveTo
 from olympe.messages.ardrone3.PilotingState import moveToChanged, FlyingStateChanged
 from olympe.enums.ardrone3.Piloting import MoveTo_Orientation_mode
 from olympe.messages.ardrone3.GPSSettingsState import HomeChanged
@@ -24,8 +24,8 @@ switch = False
 # pointHome = [-6.556972833333994,106.73229416666666]
 
 # this coordinate will be filled by coordinate.txt
-pointDestination = []
-pointHome = []
+pointDestination = [0,0]
+pointHome = [0,0]
 initDistance = -999.0
 totalDistance = 0
 
@@ -62,9 +62,10 @@ def switchDestination():
 
 def setPoint():
     global pointDestination, pointHome
-    with open('/home/pi/ta/drone_map/coordinate.txt') as f:
+    with open('./coordinate.txt') as f:
         lines = f.read().split(' ')
-
+        print(lines[0])
+        
         pointHome[0] = lines[0] # latitude1
         pointHome[1] = lines[1] # longitude1
         pointDestination[0] = lines[2] # latitude2
@@ -73,19 +74,12 @@ def setPoint():
     print('pointHome: ', pointHome)
     print('pointDestination: ', pointDestination)
 
-#Buat RTH (Return to Home)
-def move_to_gps(drone, latitude, longitude, altitude, heading, timeout=60):
-    assert drone(moveTo(latitude=latitude,
-                              longitude=longitude,
-                              altitude=altitude,
-                              orientation_mode=MoveTo_Orientation_mode.HEADING_DURING,
-                              heading=heading)
-                       >> moveToChanged(status='DONE', _timeout=timeout)
-                       >> FlyingStateChanged(state="hovering", _timeout=10)).wait().success()
+
 
 def main():
     setPoint()
     print(f"coordinate set: {pointHome}, {pointDestination}")
+    print(pointHome[0], pointHome[1])
     drone.connectToDrone()
     print("Drone connected")
     while True:
@@ -116,7 +110,7 @@ def main():
                 controlSolenoid(1)      #solenoid tutup
                 # menambah ketinggian drone sebesar 5 meter, untuk lebih detail cek drone.py
                 # drone.moveTo(0.0, -5.0)
-                drone.moveTo(0.0, -3.0)
+                drone.moveTo(0.0, -3.0) #naik 3 meter
             else:
                 distance, locBearing = drone.calculateDistance(pointDestination[0], pointDestination[1])
                 while distance < 0.0: #ga nemu (posisi gps ga dapet)
@@ -151,6 +145,8 @@ def main():
                     controlSolenoid(0)      #solenoid buka
                     sleep(5)
                     controlSolenoid(1)      #solenoid tutup
+                    sleep(3)
+                    drone.move_to_gps(drone, home_latitude, home_longitude, home_altitude, 0)
                     # drone.land()
                     # print("Landing...")
                     # drone berganti menjadi mode home dan diperintahkan untuk terbang ke titik asal
@@ -167,11 +163,14 @@ def main():
                     
                 else:
                     checkDroneBearing(abs(locBearing))
-                    drone.moveTo(distance, 0.0)
+                    drone.moveTo(distance, 0.0)                 #buat drone maju
                     totalDistance = totalDistance - distance
         except KeyboardInterrupt:
             print("interrupt")
-            sys.exit
+            drone.move_to_gps(drone, home_latitude, home_longitude, home_altitude, 0)
+            # assert drone(Landing()).wait().success()
+            drone.disconnect()
+            # sys.exit
 
 if __name__ == "__main__":
     main()
