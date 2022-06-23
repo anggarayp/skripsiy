@@ -4,9 +4,10 @@ import olympe
 from droneState import DroneState
 from olympe.messages.ardrone3.PilotingSettings import MaxTilt
 from olympe.messages.ardrone3.Piloting import TakeOff, moveBy, Landing, moveTo
-from olympe.messages.ardrone3.PilotingState import FlyingStateChanged
+from olympe.messages.ardrone3.PilotingState import moveToChanged, FlyingStateChanged
 from olympe.messages.ardrone3.GPSSettingsState import HomeChanged
 from olympe.messages.ardrone3.PilotingState import PositionChanged
+from olympe.enums.ardrone3.Piloting import MoveTo_Orientation_mode
 from olympe.messages.ardrone3.GPSSettingsState import GPSFixStateChanged
 
 class Drone():
@@ -16,6 +17,10 @@ class Drone():
     # log untuk mencatat koordinat titik takeoff dan landing drone
     FILE = "/home/pi/code/drone/research/log/coordinate/coordinate.txt"
     
+    home_latitude = 0.0
+    home_longitude = 0.0
+    home_altitude = 0.0
+
     def __init__(self, ip):
         self.DRONE_IP = ip
         self.drone = olympe.Drone(self.DRONE_IP)
@@ -50,6 +55,11 @@ class Drone():
             ).wait().success()
             self.state = DroneState.TAKEOFF
             self.write("Takeoff...\n")
+            # set current position as home
+            home_position = drone.get_state(HomeChanged)
+            self.home_latitude = home_position['latitude']
+            self.home_longitude = home_position['longitude']
+            self.home_altitude = home_position['altitude']
 
     def moveTo(self, dist, altitude):
         # fungsi untuk menggerakan drone, fungsi ini di sdk parrot bernama "moveBy" dan
@@ -82,21 +92,21 @@ class Drone():
         self.drone.disconnect()
 
     #Buat RTH (Return to Home)
-    def move_to_gps(drone, latitude, longitude, altitude, heading, timeout=60):
-        assert drone(moveTo(latitude=latitude,
-                                longitude=longitude,
-                                altitude=altitude,
+    def move_to_gps(self, heading=0, timeout=60):
+        assert drone(moveTo(latitude=self.home_latitude,
+                                longitude=self.home_longitude,
+                                altitude=self.home_altitude,
                                 orientation_mode=MoveTo_Orientation_mode.HEADING_DURING,
                                 heading=heading)
                         >> moveToChanged(status='DONE', _timeout=timeout)
                         >> FlyingStateChanged(state="hovering", _timeout=10)).wait().success()
 
-    def vincenty_formula(self, latitude1, longitude1, latitude2, longitude2):
-        #fungsi menghitung jarak drone dengan titik tujuan
-        numerator = ( (cos(latitude2) * sin(longitude2-longitude1)) * (cos(latitude2) * sin(longitude2-longitude1)) ) + ( (cos(latitude1) * sin(latitude2) - sin(latitude1) * cos(latitude2) * cos(longitude2-longitude1)) * (cos(latitude1) * sin(latitude2) - sin(latitude1) * cos(latitude2) * cos(longitude2-longitude1)))
-        denominator = sin(latitude1) * sin(latitude2) + cos(latitude1) * cos(latitude2) * cos(longitude2-longitude1)
-        distance = self.r2 * atan(sqrt(numerator)/denominator)
-        return distance
+    # def vincenty_formula(self, latitude1, longitude1, latitude2, longitude2):
+    #     #fungsi menghitung jarak drone dengan titik tujuan
+    #     numerator = ( (cos(latitude2) * sin(longitude2-longitude1)) * (cos(latitude2) * sin(longitude2-longitude1)) ) + ( (cos(latitude1) * sin(latitude2) - sin(latitude1) * cos(latitude2) * cos(longitude2-longitude1)) * (cos(latitude1) * sin(latitude2) - sin(latitude1) * cos(latitude2) * cos(longitude2-longitude1)))
+    #     denominator = sin(latitude1) * sin(latitude2) + cos(latitude1) * cos(latitude2) * cos(longitude2-longitude1)
+    #     distance = self.r2 * atan(sqrt(numerator)/denominator)
+    #     return distance
 
     def vincenty_inverse(self,coord1,coord2,maxIter=200,tol=10**-12):
 

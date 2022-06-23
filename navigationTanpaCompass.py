@@ -1,10 +1,11 @@
+from sqlalchemy import true
 from droneState import DroneState
 import sys
 import time
 #Import all neccessary features to code.
 import RPi.GPIO as GPIO
 from time import sleep
-from compass import Compass
+# from compass import Compass
 from drone import Drone
 from olympe.messages.ardrone3.Piloting import Landing, moveTo
 from olympe.messages.ardrone3.PilotingState import FlyingStateChanged
@@ -13,7 +14,7 @@ from olympe.messages.ardrone3.GPSSettingsState import HomeChanged
 # IP drone untuk koneksi
 DRONE_IP = "192.168.42.1"
 drone = Drone(DRONE_IP)
-compass = Compass()
+# compass = Compass()
 
 modeHome = False
 switch = False
@@ -75,6 +76,7 @@ def main():
     print(pointHome[0], pointHome[1])
     drone.connectToDrone()
     print("Drone connected")
+    n = 0
     while True:
         global initDistance
         global totalDistance
@@ -99,35 +101,36 @@ def main():
                 # drone.moveTo(0.0, -5.0)
                 drone.moveTo(0.0, -3.0) #naik 3 meter
 
+                drone.moveTo(5.0, 0.0) #maju 5 meter
             else:
-                distance, locBearing = drone.calculateDistance(pointDestination[0], pointDestination[1])
-                while distance < 0.0: #ga nemu (posisi gps ga dapet)
-                    # dilakukan pengecekan untuk GPS drone, bila gps tidak menangkap lokasi maka akan terjebak di
-                    # loop ini sampai mendapatkan lokasi
-                    distance, locBearing = drone.calculateDistance(pointDestination[0], pointDestination[1])
-                    print(f"##### masih cari lokasi. current distance: {distance}. current bearing: {locBearing} #####")
-                    time.sleep(2)
+                # distance, locBearing = drone.calculateDistance(pointDestination[0], pointDestination[1])
+                # while distance < 0.0: #ga nemu (posisi gps ga dapet)
+                #     # dilakukan pengecekan untuk GPS drone, bila gps tidak menangkap lokasi maka akan terjebak di
+                #     # loop ini sampai mendapatkan lokasi
+                #     distance, locBearing = drone.calculateDistance(pointDestination[0], pointDestination[1])
+                #     print(f"##### masih cari lokasi. current distance: {distance}. current bearing: {locBearing} #####")
+                #     time.sleep(2)
 
-                if initDistance < 0:
-                    # pada awal eksekusi initDistance akan diset -999 yang menandakan drone baru diperintahkan untuk
-                    # terbang dan belum memiliki total jarak tempuh ke titik tujuan
-                    initDistance = distance
-                    # jarak total yang harus ditempuh drone untuk sampai ke titik tujuan, didapatkan sekali saat 
-                    # drone pertama kali menghitung jarak titik drone dengan titik tujuan
-                    totalDistance = distance
-                if totalDistance > 10.0:
-                    # untuk keamanan (supaya drone tidak menabrak pohon dsb, maka jarak tempuh drone dibatasi 
-                    # maksimal 10 meter)
-                    totalDistance = 10.0
-                    distance = 10.0
-                if distance > totalDistance and totalDistance >= 0:
-                    # untuk menghindari drone tidak pernah turun karena hasil perhitungan gps tidak pernah sampai 0,
-                    # maka totalDistance dijadikan acuan
-                    distance = totalDistance
-                if distance <= 0.5 or totalDistance <= 0.0:
-                    # drone sampai di titik tujuan
-                    drone.atDest = True
-                if drone.atDest == True:
+                # if initDistance < 0:
+                #     # pada awal eksekusi initDistance akan diset -999 yang menandakan drone baru diperintahkan untuk
+                #     # terbang dan belum memiliki total jarak tempuh ke titik tujuan
+                #     initDistance = distance
+                #     # jarak total yang harus ditempuh drone untuk sampai ke titik tujuan, didapatkan sekali saat 
+                #     # drone pertama kali menghitung jarak titik drone dengan titik tujuan
+                #     totalDistance = distance
+                # if totalDistance > 10.0:
+                #     # untuk keamanan (supaya drone tidak menabrak pohon dsb, maka jarak tempuh drone dibatasi 
+                #     # maksimal 10 meter)
+                #     totalDistance = 10.0
+                #     distance = 10.0
+                # if distance > totalDistance and totalDistance >= 0:
+                #     # untuk menghindari drone tidak pernah turun karena hasil perhitungan gps tidak pernah sampai 0,
+                #     # maka totalDistance dijadikan acuan
+                #     distance = totalDistance
+                # if distance <= 0.5 or totalDistance <= 0.0:
+                #     # drone sampai di titik tujuan
+                #     drone.atDest = True
+                if n == 1:
                     drone.moveTo(0.0, 3.0)  #turun 3 meter
                     sleep(3)
                     controlSolenoid(0)      #solenoid buka
@@ -149,10 +152,12 @@ def main():
                     #     modeHome = True
                     #     break
                     
-                else:
-                    checkDroneBearing(abs(locBearing))
-                    drone.moveTo(distance, 0.0)                 #buat drone maju
-                    totalDistance = totalDistance - distance
+                # else:
+                #     checkDroneBearing(abs(locBearing))
+                #     drone.moveTo(distance, 0.0)                 #buat drone maju
+                #     totalDistance = totalDistance - distance
+            n = n + 1
+            sleep(10)
         except KeyboardInterrupt:
             print("interrupt")
             # drone.move_to_gps()                       #keyboard interrupt langsung RTH
