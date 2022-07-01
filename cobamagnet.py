@@ -13,8 +13,10 @@ GPIO.setmode(GPIO.BCM)
 GPIO.setup(18, GPIO.OUT)
 
 while (True): 
-    GPIO.output(18.1)
+    GPIO.output(18, 1)
     print("nyangkut")
+    sleep(5)
 
-    GPIO.output(18.0)
+    GPIO.output(18, 0)
     print("lepas")
+    sleep(5)
